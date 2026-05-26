@@ -9,6 +9,11 @@ import { products as initialProducts } from "./src/data/products";
 
 dotenv.config();
 
+function cleanEnv(val: string | undefined): string {
+  if (!val) return "";
+  return val.trim().replace(/^['"]|['"]$/g, "");
+}
+
 let pool: any = null;
 let dbConnectionStatus: "idle" | "connected" | "error" | "not_configured" = "idle";
 let dbLastError: string | null = null;
@@ -16,11 +21,12 @@ let dbLastError: string | null = null;
 async function getDbPool() {
   if (pool) return pool;
 
-  const host = process.env.HOSTINGER_DB_HOST;
-  const user = process.env.HOSTINGER_DB_USER;
-  const password = process.env.HOSTINGER_DB_PASSWORD;
-  const database = process.env.HOSTINGER_DB_NAME;
-  const port = process.env.HOSTINGER_DB_PORT ? parseInt(process.env.HOSTINGER_DB_PORT) : 3306;
+  const host = cleanEnv(process.env.HOSTINGER_DB_HOST);
+  const user = cleanEnv(process.env.HOSTINGER_DB_USER);
+  const password = cleanEnv(process.env.HOSTINGER_DB_PASSWORD);
+  const database = cleanEnv(process.env.HOSTINGER_DB_NAME);
+  const portStr = cleanEnv(process.env.HOSTINGER_DB_PORT);
+  const port = portStr ? parseInt(portStr) : 3306;
 
   if (!host || !user || !database) {
     console.log("⚠️ Hostinger MySQL credentials not fully configured in env variables. Operating in Offline Sandbox LocalStorage storage.");
@@ -166,10 +172,10 @@ async function startServer() {
       status: dbConnectionStatus,
       lastError: dbLastError,
       config: {
-        host: process.env.HOSTINGER_DB_HOST || "",
-        database: process.env.HOSTINGER_DB_NAME || "",
-        user: process.env.HOSTINGER_DB_USER || "",
-        port: process.env.HOSTINGER_DB_PORT || "3306"
+        host: cleanEnv(process.env.HOSTINGER_DB_HOST),
+        database: cleanEnv(process.env.HOSTINGER_DB_NAME),
+        user: cleanEnv(process.env.HOSTINGER_DB_USER),
+        port: cleanEnv(process.env.HOSTINGER_DB_PORT) || "3306"
       }
     });
   });
@@ -190,8 +196,8 @@ async function startServer() {
     try {
       const { amount, currency = "INR", receipt } = req.body;
       
-      const keyId = process.env.RAZORPAY_KEY_ID || "rzp_test_StVjnhHWb9zVjk";
-      const keySecret = process.env.RAZORPAY_KEY_SECRET || "kBIl1wBtr7twSUZ0yr5d1Wdi";
+      const keyId = cleanEnv(req.headers["x-razorpay-key-id"] as string || process.env.RAZORPAY_KEY_ID) || "rzp_test_StVjnhHWb9zVjk";
+      const keySecret = cleanEnv(req.headers["x-razorpay-key-secret"] as string || process.env.RAZORPAY_KEY_SECRET) || "kBIl1wBtr7twSUZ0yr5d1Wdi";
 
       if (!keyId || !keySecret) {
         return res.status(500).json({ error: "Razorpay credentials are not configured" });
@@ -235,7 +241,7 @@ async function startServer() {
     try {
       const { razorpay_order_id, razorpay_payment_id, razorpay_signature, amount, items, shipping } = req.body;
       
-      const keySecret = process.env.RAZORPAY_KEY_SECRET || "kBIl1wBtr7twSUZ0yr5d1Wdi";
+      const keySecret = cleanEnv(process.env.RAZORPAY_KEY_SECRET) || "kBIl1wBtr7twSUZ0yr5d1Wdi";
 
       if (!keySecret) {
         return res.status(500).json({ error: "Razorpay secret key not found" });
@@ -675,11 +681,12 @@ async function startServer() {
   app.post("/api/recommend", async (req, res) => {
     try {
       const { concern } = req.body;
-      if (!process.env.GEMINI_API_KEY) {
+      const apiKey = cleanEnv(process.env.GEMINI_API_KEY);
+      if (!apiKey) {
         return res.status(500).json({ error: "API Key missing" });
       }
 
-      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+      const genAI = new GoogleGenerativeAI(apiKey);
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
       const prompt = `You are an expert botanical wellness guide for "Organic Ecommerce". 
