@@ -28,6 +28,10 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
       setLoading(true);
       const res = await fetch("/api/products");
       if (res.ok) {
+        const contentType = res.headers.get("content-type");
+        if (contentType && contentType.includes("text/html")) {
+          throw new Error("Received HTML routing response instead of JSON. Frontend is likely running in a static host (Netlify).");
+        }
         const data = await res.json();
         if (data.source === "mysql" && Array.isArray(data.products) && data.products.length > 0) {
           setProducts(data.products);
