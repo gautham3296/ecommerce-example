@@ -210,25 +210,15 @@ export default function Admin() {
     try {
       const res = await fetch("/api/db-status");
       if (res.ok) {
-        const contentType = res.headers.get("content-type");
-        if (contentType && contentType.includes("text/html")) {
-          // Received HTML index instead of API JSON response. This signifies static-only host fallback (e.g. Netlify redirects)
-          setDbStatus('not_configured');
-          setDbLastError(null);
-          return;
-        }
         const data = await res.json();
         setDbStatus(data.status);
         setDbLastError(data.lastError);
         setDbConfig(data.config);
-      } else {
-        setDbStatus('not_configured');
       }
     } catch (err) {
-      console.warn("Failed to fetch database status, operating in Offline Sandbox Fallback Mode:", err);
-      // Fallback silently to client-side localStorage sandbox instead of breaking with errors
-      setDbStatus('not_configured');
-      setDbLastError(null);
+      console.error("Failed to fetch database status:", err);
+      setDbStatus('error');
+      setDbLastError("Server is unreachable or API route is failed.");
     }
   };
 
