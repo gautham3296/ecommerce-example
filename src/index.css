@@ -1,0 +1,68 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #1a432e;
+  --color-primary-container: #d9ebd9;
+  --color-on-primary: #ffffff;
+  --color-on-primary-container: #103321;
+  
+  --color-secondary: #857261;
+  --color-secondary-container: #f1ede8;
+  --color-on-secondary: #ffffff;
+  --color-on-secondary-container: #403226;
+  
+  --color-surface: #f9f8f4;
+  --color-surface-container-low: #f3f1e9;
+  --color-surface-container: #eae8dd;
+  --color-surface-container-high: #e0ddd1;
+  --color-surface-container-highest: #d6d2c4;
+  
+  --color-on-surface: #121c16;
+  --color-on-surface-variant: #434e47;
+  
+  --color-error: #ba1a1a;
+  --color-error-container: #ffdad6;
+  --color-on-error-container: #93000a;
+
+  --font-serif: "Playfair Display", serif;
+  --font-sans: "Plus Jakarta Sans", sans-serif;
+}
+
+@layer base {
+  body {
+    @apply bg-surface text-on-surface font-sans antialiased;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif;
+  }
+}
+
+.organic-shape {
+  border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee-mobile {
+  display: flex;
+  width: max-content;
+  animation: marquee 20s linear infinite;
+}
+

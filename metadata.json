@@ -1,0 +1,8 @@
+{
+  "name": "Organic Ecommerce",
+  "description": "Premium e-commerce showroom and pitch platform for handcrafted whole-leaf organic and herbal health blends.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
