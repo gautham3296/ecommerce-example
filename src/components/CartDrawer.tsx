@@ -111,11 +111,23 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
       });
 
       if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.details || errorData.error || 'Failed to create payment order');
+        let errorMsg = 'Failed to create payment order.';
+        try {
+          const errorData = await res.json();
+          errorMsg = errorData.details || errorData.error || errorMsg;
+        } catch (parseErr) {
+          errorMsg = `HTTP Error ${res.status}: Failed to read error response.`;
+        }
+        throw new Error(errorMsg);
       }
 
-      const orderData = await res.json();
+      let orderData;
+      try {
+        orderData = await res.json();
+      } catch (jsonErr) {
+        console.error("JSON parsing error on checkout:", jsonErr);
+        throw new Error("Could not parse payment response from backend. Your app might be deployed statically on Netlify without backend proxying configured. Please verify that your public/_redirects file contains the active Cloud Run proxy rule.");
+      }
 
       // Load SDK
       const loaded = await loadRazorpaySDK();
@@ -157,8 +169,14 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
             });
 
             if (!verifyRes.ok) {
-              const verifyErr = await verifyRes.json();
-              throw new Error(verifyErr.error || 'Payment signature verification failed.');
+              let verifyErrMsg = 'Payment signature verification failed.';
+              try {
+                const verifyErr = await verifyRes.json();
+                verifyErrMsg = verifyErr.error || verifyErrMsg;
+              } catch (e) {
+                verifyErrMsg = `Payment verification request failed with HTTP ${verifyRes.status}. Your backend connection might be offline.`;
+              }
+              throw new Error(verifyErrMsg);
             }
 
             // Save order into client-side order history (localStorage)
