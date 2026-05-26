@@ -29,7 +29,9 @@ import {
   Save,
   X,
   FileText,
-  Tag
+  Tag,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { formatCurrency } from '../lib/utils';
 import { Link } from 'react-router-dom';
@@ -77,6 +79,7 @@ export default function Admin() {
   const [dbLastError, setDbLastError] = React.useState<string | null>(null);
   const [dbConfig, setDbConfig] = React.useState<{ host: string; database: string; user: string; port: string } | null>(null);
   const [isRetryingDb, setIsRetryingDb] = React.useState(false);
+  const [isDbDiagExpanded, setIsDbDiagExpanded] = React.useState(false);
 
   // Local state for inline tracking ID workflow
   const [editingTrackingOrderId, setEditingTrackingOrderId] = React.useState<string | null>(null);
@@ -485,112 +488,146 @@ export default function Admin() {
         </div>
 
         {/* Database Connectivity Diagnostics Panel */}
-        <div className="mb-8 bg-white rounded-2xl border border-outline-variant/35 p-6 shadow-xs">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+        <div className="mb-8 bg-white rounded-2xl border border-outline-variant/35 p-4 md:p-5 shadow-xs">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                dbStatus === 'connected' ? 'bg-[#48671c]/10 text-[#48671c]' :
-                dbStatus === 'error' ? 'bg-red-50 text-red-600' :
-                'bg-orange-50 text-orange-600'
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                dbStatus === 'connected' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-650'
               }`}>
-                <Database size={20} />
+                <Database size={16} />
               </div>
-              <div>
-                <h3 className="font-serif text-lg font-black text-on-surface">
-                  Hostinger MySQL Database Connectivity
-                </h3>
-                <p className="text-on-surface-variant text-xs">
-                  Real-time synchronization state for whole-herb customer order records
-                </p>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span className="font-serif text-sm font-black text-on-surface">
+                  Hostinger DB Connection:
+                </span>
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                  dbStatus === 'connected' 
+                    ? 'bg-green-50 text-green-700 border border-green-200/50' 
+                    : 'bg-red-50 text-red-700 border border-red-200/50'
+                }`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${dbStatus === 'connected' ? 'bg-green-600 animate-pulse' : 'bg-red-600 animate-pulse'}`} />
+                  {dbStatus === 'connected' ? 'Connected (Green)' : 'Offline / Error (Red)'}
+                </span>
               </div>
             </div>
 
             <button
-              onClick={handleRetryDb}
-              disabled={isRetryingDb}
-              className={`px-4 py-2 text-xs font-bold rounded-full transition-all flex items-center gap-2 cursor-pointer ${
-                isRetryingDb ? 'bg-gray-100 text-gray-400 cursor-not-allowed' :
-                dbStatus === 'connected' ? 'bg-[#48671c]/10 text-[#48671c] hover:bg-[#48671c]/20' :
-                'bg-primary text-white hover:bg-primary-hover shadow-sm'
-              }`}
+              onClick={() => setIsDbDiagExpanded(!isDbDiagExpanded)}
+              className="px-4 py-1.5 text-xs font-bold font-sans rounded-full bg-surface-container-high hover:bg-surface-container-highest text-on-surface border border-outline-variant/40 transition-all flex items-center gap-1.5 cursor-pointer hover:scale-102"
             >
-              <RefreshCw size={12} className={isRetryingDb ? 'animate-spin' : ''} />
-              {isRetryingDb ? 'Testing Handshake...' : 'Test & Retry Connection'}
+              {isDbDiagExpanded ? (
+                <>
+                  Minimize Details <ChevronUp size={14} />
+                </>
+              ) : (
+                <>
+                  Expand Details <ChevronDown size={14} />
+                </>
+              )}
             </button>
           </div>
 
-          {dbStatus === 'connected' && (
-            <div className="bg-green-50/60 border border-green-200/50 rounded-xl p-4 text-green-800 text-xs space-y-2">
-              <p className="font-bold flex items-center gap-1.5">
-                <CheckCircle size={14} className="text-green-600 shrink-0" />
-                Successfully connected to Hostinger MySQL Database!
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] text-green-700/90 font-mono mt-1 pt-1.5 border-t border-green-200/30">
-                <div><span className="font-sans font-semibold">Host:</span> {dbConfig?.host || 'N/A'}</div>
-                <div><span className="font-sans font-semibold">User:</span> {dbConfig?.user || 'N/A'}</div>
-                <div><span className="font-sans font-semibold">Database:</span> {dbConfig?.database || 'N/A'}</div>
-              </div>
-              <p className="font-sans text-[11px] text-green-600/80 mt-1">
-                ✓ Tables initialized. Orders validated with Razorpay or submitted in simulated checkout are securely persisted to your remote Hostinger DB.
-              </p>
-            </div>
-          )}
-
-          {dbStatus === 'error' && (
-            <div className="space-y-4">
-              <div className="bg-red-50/80 border border-red-200/60 rounded-xl p-4 text-red-800 text-xs space-y-1.5">
-                <p className="font-bold flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-red-600 animate-pulse inline-block" />
-                  Connection Attempt Blocked (Timeout / Timeout Error)
-                </p>
-                <div className="bg-red-150/40 font-mono text-[11px] p-2 rounded border border-red-200 text-red-700 break-all select-all">
-                  Error Details: {dbLastError || 'connect ETIMEDOUT'}
+          {/* Expanded detailed report diagnostics */}
+          {isDbDiagExpanded && (
+            <div className="mt-5 pt-5 border-t border-outline-variant/25 space-y-5 animate-fadeIn">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                  <h4 className="font-serif text-base font-black text-on-surface">
+                    Database Diagnostics & Parameters
+                  </h4>
+                  <p className="text-on-surface-variant text-[11px] font-sans">
+                    Real-time synchronization state for whole-herb customer order records. Testing handshake can identify firewall blocks.
+                  </p>
                 </div>
+
+                <button
+                  onClick={handleRetryDb}
+                  disabled={isRetryingDb}
+                  className={`px-4 py-2 text-xs font-bold rounded-full transition-all flex items-center gap-2 cursor-pointer ${
+                    isRetryingDb ? 'bg-gray-100 text-gray-400 cursor-not-allowed' :
+                    dbStatus === 'connected' ? 'bg-[#48671c]/10 text-[#48671c] hover:bg-[#48671c]/20' :
+                    'bg-primary text-white hover:bg-primary-hover shadow-sm'
+                  }`}
+                >
+                  <RefreshCw size={12} className={isRetryingDb ? 'animate-spin' : ''} />
+                  {isRetryingDb ? 'Testing Handshake...' : 'Test & Retry Connection'}
+                </button>
               </div>
 
-              <div className="bg-gray-50 border border-outline-variant/40 rounded-xl p-4 text-xs space-y-3">
-                <h4 className="font-bold text-[#48671c] font-sans">
-                  🛠️ How to Resolve Hostinger Port/Timeout issues:
-                </h4>
-                <ul className="list-decimal pl-4 space-y-2 text-on-surface-variant text-[11px] leading-relaxed">
-                  <li>
-                    <span className="font-bold text-on-surface">Incorrect Host Address (Most Common)</span>:
-                    Hostinger databases usually do NOT allow public port 3306 queries through your domain name (<code className="bg-gray-200/60 px-1 py-0.5 rounded text-red-600">gray-jackal-950327.hostingersite.com</code>).
-                    Go to Hostinger's <span className="font-semibold text-on-surface">MySQL Databases</span> page, and copy the actual host specified under <strong className="font-bold text-on-surface">MySQL Host</strong> or <strong className="font-bold text-on-surface">MySQL Server</strong> (often it's an IP address or a server subdomain like <code className="bg-gray-200/60 px-1 py-0.5 rounded text-primary">sqlXXX.main-hosting.eu</code>). Ensure this is entered exactly in your AI Studio Settings environment secrets.
-                  </li>
-                  <li>
-                    <span className="font-bold text-on-surface">Database Credentials Check</span>:
-                    Verify that your database variables correspond strictly to the values in Hostinger:
-                    <ul className="list-disc pl-4 mt-1 space-y-1 text-gray-500">
-                      <li><code className="bg-gray-200/30 px-1 py-0.5 rounded">HOSTINGER_DB_HOST</code>: The database server host described above.</li>
-                      <li><code className="bg-gray-200/30 px-1 py-0.5 rounded">HOSTINGER_DB_USER</code>: <code className="bg-gray-200/30 px-1 text-on-surface">u787557456_nalambrews</code></li>
-                      <li><code className="bg-gray-200/30 px-1 py-0.5 rounded">HOSTINGER_DB_NAME</code>: <code className="bg-gray-200/30 px-1 text-on-surface">u787557456_nalambrews</code></li>
-                      <li><code className="bg-gray-200/30 px-1 py-0.5 rounded">HOSTINGER_DB_PASSWORD</code>: Your designated MySQL user password.</li>
+              {dbStatus === 'connected' && (
+                <div className="bg-green-50/60 border border-green-200/50 rounded-xl p-4 text-green-800 text-xs space-y-2 animate-fadeIn">
+                  <p className="font-bold flex items-center gap-1.5">
+                    <CheckCircle size={14} className="text-green-600 shrink-0" />
+                    Successfully connected to Hostinger MySQL Database!
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] text-green-700/90 font-mono mt-1 pt-1.5 border-t border-green-200/30">
+                    <div><span className="font-sans font-semibold">Host:</span> {dbConfig?.host || 'N/A'}</div>
+                    <div><span className="font-sans font-semibold">User:</span> {dbConfig?.user || 'N/A'}</div>
+                    <div><span className="font-sans font-semibold">Database:</span> {dbConfig?.database || 'N/A'}</div>
+                  </div>
+                  <p className="font-sans text-[11px] text-green-600/80 mt-1">
+                    ✓ Tables initialized. Orders validated with Razorpay or submitted in simulated checkout are securely persisted to your remote Hostinger DB.
+                  </p>
+                </div>
+              )}
+
+              {dbStatus === 'error' && (
+                <div className="space-y-4 animate-fadeIn">
+                  <div className="bg-red-50/80 border border-red-200/60 rounded-xl p-4 text-red-800 text-xs space-y-1.5">
+                    <p className="font-bold flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-red-600 animate-pulse inline-block" />
+                      Connection Attempt Blocked (Timeout / Connection Error)
+                    </p>
+                    <div className="bg-red-150/40 font-mono text-[11px] p-2 rounded border border-red-200 text-red-700 break-all select-all">
+                      Error Details: {dbLastError || 'connect ETIMEDOUT'}
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-50 border border-outline-variant/40 rounded-xl p-4 text-xs space-y-3">
+                    <h4 className="font-bold text-[#48671c] font-sans">
+                      🛠️ How to Resolve Hostinger Port/Timeout issues:
+                    </h4>
+                    <ul className="list-decimal pl-4 space-y-2 text-on-surface-variant text-[11px] leading-relaxed">
+                      <li>
+                        <span className="font-bold text-on-surface">Incorrect Host Address (Most Common)</span>:
+                        Hostinger databases usually do NOT allow public port 3306 queries through your domain name (<code className="bg-gray-200/60 px-1 py-0.5 rounded text-red-600">gray-jackal-950327.hostingersite.com</code>).
+                        Go to Hostinger's <span className="font-semibold text-on-surface">MySQL Databases</span> page, and copy the actual host specified under <strong className="font-bold text-on-surface">MySQL Host</strong> or <strong className="font-bold text-on-surface">MySQL Server</strong> (often it's an IP address or a server subdomain like <code className="bg-gray-200/60 px-1 py-0.5 rounded text-primary">sqlXXX.main-hosting.eu</code>). Ensure this is entered exactly in your AI Studio Settings environment secrets.
+                      </li>
+                      <li>
+                        <span className="font-bold text-on-surface">Database Credentials Check</span>:
+                        Verify that your database variables correspond strictly to the values in Hostinger:
+                        <ul className="list-disc pl-4 mt-1 space-y-1 text-gray-500">
+                          <li><code className="bg-gray-200/30 px-1 py-0.5 rounded">HOSTINGER_DB_HOST</code>: The database server host described above.</li>
+                          <li><code className="bg-gray-200/30 px-1 py-0.5 rounded">HOSTINGER_DB_USER</code>: <code className="bg-gray-200/30 px-1 text-on-surface">u787557456_nalambrews</code></li>
+                          <li><code className="bg-gray-200/30 px-1 py-0.5 rounded">HOSTINGER_DB_NAME</code>: <code className="bg-gray-200/30 px-1 text-on-surface">u787557456_nalambrews</code></li>
+                          <li><code className="bg-gray-200/30 px-1 py-0.5 rounded">HOSTINGER_DB_PASSWORD</code>: Your designated MySQL user password.</li>
+                        </ul>
+                      </li>
+                      <li>
+                        <span className="font-bold text-on-surface">Remote MySQL Authorized Hosts</span>:
+                        You have successfully added <code className="bg-gray-200/60 px-1 py-0.5 rounded text-green-700">%</code> to remote hosts which allows external connectivity. Ensure the settings have saved correctly on Hostinger!
+                      </li>
                     </ul>
-                  </li>
-                  <li>
-                    <span className="font-bold text-on-surface">Remote MySQL Authorized Hosts</span>:
-                    You have successfully added <code className="bg-gray-200/60 px-1 py-0.5 rounded text-green-700">%</code> to remote hosts which allows external connectivity. Ensure the settings have saved correctly on Hostinger!
-                  </li>
-                </ul>
-              </div>
-            </div>
-          )}
+                  </div>
+                </div>
+              )}
 
-          {dbStatus === 'not_configured' && (
-            <div className="bg-orange-50/70 border border-orange-200/50 rounded-xl p-4 text-orange-850 text-xs space-y-2">
-              <p className="font-semibold flex items-center gap-1.5">
-                💡 Currently running in Local Storage Sandbox fallback mode
-              </p>
-              <p className="text-orange-900/80 leading-relaxed text-[11px]">
-                To persist transaction ledgers directly into your Hostinger MySQL Database, open the the AI Studio <span className="font-bold">Settings</span> menu on the side, and add the credentials as environment secrets:
-              </p>
-              <div className="bg-white/80 border border-orange-200/40 font-mono text-[10px] p-2.5 rounded-lg text-orange-950 space-y-1 w-fit">
-                <div>HOSTINGER_DB_HOST=your_hostinger_db_host</div>
-                <div>HOSTINGER_DB_USER=u787557456_nalambrews</div>
-                <div>HOSTINGER_DB_NAME=u787557456_nalambrews</div>
-                <div>HOSTINGER_DB_PASSWORD=your_mysql_database_password</div>
-              </div>
+              {dbStatus === 'not_configured' && (
+                <div className="bg-orange-50/70 border border-orange-200/50 rounded-xl p-4 text-orange-850 text-xs space-y-2 animate-fadeIn">
+                  <p className="font-semibold flex items-center gap-1.5">
+                    💡 Currently running in Local Storage Sandbox fallback mode
+                  </p>
+                  <p className="text-orange-900/80 leading-relaxed text-[11px]">
+                    To persist transaction ledgers directly into your Hostinger MySQL Database, open the the AI Studio <span className="font-bold">Settings</span> menu on the side, and add the credentials as environment secrets:
+                  </p>
+                  <div className="bg-white/80 border border-orange-200/40 font-mono text-[10px] p-2.5 rounded-lg text-orange-950 space-y-1 w-fit">
+                    <div>HOSTINGER_DB_HOST=your_hostinger_db_host</div>
+                    <div>HOSTINGER_DB_USER=u787557456_nalambrews</div>
+                    <div>HOSTINGER_DB_NAME=u787557456_nalambrews</div>
+                    <div>HOSTINGER_DB_PASSWORD=your_mysql_database_password</div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
