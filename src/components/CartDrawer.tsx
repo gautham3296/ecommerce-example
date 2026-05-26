@@ -251,6 +251,55 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
     }
   };
 
+  const handleSimulatedSandboxCheckout = () => {
+    try {
+      setIsCheckingOut(true);
+      setPaymentError(null);
+      
+      const randomOrderId = `order_${Math.random().toString(36).substr(2, 9)}_sandbox`;
+      const randomPaymentId = `pay_${Math.random().toString(36).substr(2, 9)}_sandbox`;
+
+      const newOrder = {
+        id: randomOrderId,
+        paymentId: randomPaymentId,
+        date: new Date().toISOString(),
+        amount: cartTotal,
+        items: cart.map(item => ({
+          id: item.id,
+          name: item.name,
+          scientificName: item.scientificName,
+          price: item.price,
+          heroImage: item.heroImage,
+          quantity: item.quantity
+        })),
+        shipping: { ...shippingForm }
+      };
+
+      const existingOrdersStr = localStorage.getItem('nalam_brews_orders');
+      let existingOrders = [];
+      if (existingOrdersStr) {
+         try {
+           existingOrders = JSON.parse(existingOrdersStr);
+         } catch(ex) {
+           console.error("Failed to parse orders", ex);
+         }
+      }
+      existingOrders.push(newOrder);
+      localStorage.setItem('nalam_brews_orders', JSON.stringify(existingOrders));
+
+      setOrderSuccess({
+        orderId: randomOrderId,
+        paymentId: randomPaymentId,
+        amount: cartTotal
+      });
+      clearCart();
+    } catch (err: any) {
+      setPaymentError(err.message || 'Simulated checkout failed.');
+    } finally {
+      setIsCheckingOut(false);
+    }
+  };
+
   const resetAfterSuccess = () => {
     setOrderSuccess(null);
     onClose();
@@ -461,9 +510,22 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                 {/* Shipping Step Bottom Action Bar */}
                 <div className="p-6 border-t border-outline-variant/30 bg-surface-container-low space-y-4">
                   {paymentError && (
-                    <div className="p-3 bg-red-500/5 border border-red-500/15 rounded-xl flex items-start gap-1.5 text-left text-xs text-red-800">
-                      <AlertCircle className="text-red-700 shrink-0 mt-0.5" size={14} />
-                      <p className="font-sans leading-normal">{paymentError}</p>
+                    <div className="p-3 bg-red-500/5 border border-red-500/15 rounded-xl flex flex-col gap-2 text-left text-xs text-red-800">
+                      <div className="flex items-start gap-1.5">
+                        <AlertCircle className="text-red-700 shrink-0 mt-0.5" size={14} />
+                        <p className="font-sans leading-normal">{paymentError}</p>
+                      </div>
+                      
+                      {/* Show simulated local sandbox bypass button if static proxy configuration failed */}
+                      {(paymentError.includes('404') || paymentError.includes('Netlify') || paymentError.includes('parse') || paymentError.includes('unreachable') || paymentError.includes('offline') || paymentError.includes('HTTP Error')) && (
+                        <button
+                          type="button"
+                          onClick={handleSimulatedSandboxCheckout}
+                          className="mt-1 self-start px-3 py-1.5 bg-[#48671c] hover:bg-[#344d14] text-white rounded-lg font-sans text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer"
+                        >
+                          ⚡ Complete with Local Sandbox Simulator mode
+                        </button>
+                      )}
                     </div>
                   )}
 
