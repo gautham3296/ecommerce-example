@@ -24,6 +24,7 @@ import {
 import { useCart } from '../context/CartContext';
 import { formatCurrency } from '../lib/utils';
 import { Link, useNavigate } from 'react-router-dom';
+import { getApiUrl } from '../lib/api';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -101,7 +102,7 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
       setPaymentError(null);
 
       // Create Razorpay Order on the backend
-      const res = await fetch('/api/payment/order', {
+      const res = await fetch(getApiUrl('/api/payment/order'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -148,7 +149,7 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
           try {
             setIsCheckingOut(true);
             // Verify signature on the server to prevent tamper and persist to MySQL
-            const verifyRes = await fetch('/api/payment/verify', {
+            const verifyRes = await fetch(getApiUrl('/api/payment/verify'), {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({

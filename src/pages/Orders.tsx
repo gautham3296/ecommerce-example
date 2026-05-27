@@ -7,6 +7,7 @@ import React from 'react';
 import { ShoppingBag, ChevronRight, Calendar, MapPin, Phone, User, ShieldCheck } from 'lucide-react';
 import { formatCurrency } from '../lib/utils';
 import { Link } from 'react-router-dom';
+import { getApiUrl } from '../lib/api';
 
 interface OrderItem {
   id: string;
@@ -68,7 +69,7 @@ export default function Orders() {
       let mysqlOrders: Order[] = [];
       try {
         const queryParams = new URLSearchParams({ name: nameVal, contact: contactVal });
-        const res = await fetch(`/api/orders/lookup?${queryParams.toString()}`);
+        const res = await fetch(getApiUrl(`/api/orders/lookup?${queryParams.toString()}`));
         if (res.ok) {
           const data = await res.json();
           if (data.orders) {

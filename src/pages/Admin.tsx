@@ -37,6 +37,7 @@ import { formatCurrency } from '../lib/utils';
 import { Link } from 'react-router-dom';
 import { useProducts } from '../context/ProductsContext';
 import { Product } from '../types';
+import { getApiUrl } from '../lib/api';
 
 interface OrderItem {
   id: string;
@@ -80,6 +81,11 @@ export default function Admin() {
   const [dbConfig, setDbConfig] = React.useState<{ host: string; database: string; user: string; port: string } | null>(null);
   const [isRetryingDb, setIsRetryingDb] = React.useState(false);
   const [isDbDiagExpanded, setIsDbDiagExpanded] = React.useState(false);
+
+  // Custom API Base URL states
+  const [customApiBaseUrl, setCustomApiBaseUrl] = React.useState<string>(() => localStorage.getItem('custom_api_base_url') || '');
+  const [tempCustomUrl, setTempCustomUrl] = React.useState<string>(() => localStorage.getItem('custom_api_base_url') || '');
+  const [urlMessage, setUrlMessage] = React.useState<{ text: string; type: 'success' | 'info' } | null>(null);
 
   // Local state for inline tracking ID workflow
   const [editingTrackingOrderId, setEditingTrackingOrderId] = React.useState<string | null>(null);
@@ -211,7 +217,7 @@ export default function Admin() {
 
   const fetchDbStatus = async () => {
     try {
-      const res = await fetch("/api/db-status");
+      const res = await fetch(getApiUrl("/api/db-status"));
       if (res.ok) {
         const data = await res.json();
         setDbStatus(data.status);
@@ -228,7 +234,7 @@ export default function Admin() {
   const handleRetryDb = async () => {
     setIsRetryingDb(true);
     try {
-      const res = await fetch("/api/db-retry", { method: "POST" });
+      const res = await fetch(getApiUrl("/api/db-retry"), { method: "POST" });
       const data = await res.json();
       setDbStatus(data.status);
       setDbLastError(data.lastError);
@@ -244,12 +250,54 @@ export default function Admin() {
     }
   };
 
+  const handleSaveCustomUrl = () => {
+    let cleanUrl = tempCustomUrl.trim();
+    if (cleanUrl) {
+      if (cleanUrl.endsWith('/')) {
+        cleanUrl = cleanUrl.slice(0, -1);
+      }
+      localStorage.setItem('custom_api_base_url', cleanUrl);
+      setCustomApiBaseUrl(cleanUrl);
+      setUrlMessage({
+        text: `Backend API URL saved successfully! Now routing requests directly to: ${cleanUrl}`,
+        type: 'success'
+      });
+    } else {
+      localStorage.removeItem('custom_api_base_url');
+      setCustomApiBaseUrl('');
+      setUrlMessage({
+        text: "Custom API URL cleared. Now routing requests using standard Netlify relative proxies (/api/...).",
+        type: 'info'
+      });
+    }
+    setTimeout(() => {
+      fetchDbStatus();
+      loadLedger();
+    }, 150);
+    setTimeout(() => setUrlMessage(null), 8000);
+  };
+
+  const handleResetCustomUrl = () => {
+    localStorage.removeItem('custom_api_base_url');
+    setCustomApiBaseUrl('');
+    setTempCustomUrl('');
+    setUrlMessage({
+      text: "API Base URL successfully reset to standard relative proxying (/api/...).",
+      type: 'info'
+    });
+    setTimeout(() => {
+      fetchDbStatus();
+      loadLedger();
+    }, 150);
+    setTimeout(() => setUrlMessage(null), 6000);
+  };
+
   const loadLedger = async () => {
     try {
       // 1. Fetch from Hostinger MySQL remote DB first
       let mysqlOrders: Order[] = [];
       try {
-        const res = await fetch("/api/orders/all");
+        const res = await fetch(getApiUrl("/api/orders/all"));
         if (res.ok) {
           const data = await res.json();
           if (data.orders && data.orders.length > 0) {
@@ -323,7 +371,7 @@ export default function Admin() {
       localStorage.setItem('nalam_brews_orders', JSON.stringify(updatedLocal));
 
       // 3. Submit remote update REST query (Hostinger MySQL)
-      const res = await fetch("/api/orders/update-status", {
+      const res = await fetch(getApiUrl("/api/orders/update-status"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ orderId, status, trackingId })
@@ -355,7 +403,7 @@ export default function Admin() {
       localStorage.removeItem('nalam_brews_orders');
       
       try {
-        await fetch("/api/orders/wipe", { method: "POST" });
+        await fetch(getApiUrl("/api/orders/wipe"), { method: "POST" });
       } catch (dbErr) {
         console.error("Failed to wipe remote database tables:", dbErr);
       }
@@ -630,6 +678,104 @@ export default function Admin() {
               )}
             </div>
           )}
+        </div>
+
+        {/* Custom Backend API Routing Panel */}
+        <div className="mb-8 bg-white rounded-2xl border border-outline-variant/35 p-5 shadow-xs">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+              <Database size={16} />
+            </div>
+            <div>
+              <h3 className="font-serif text-base font-black text-on-surface">
+                Custom Backend API URL Routing
+              </h3>
+              <p className="text-on-surface-variant text-[11px] font-sans">
+                Directly route all client transactions, queries, products, and checkout handshakes to your custom-hosted backend instance.
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex flex-col md:flex-row items-stretch gap-3">
+              <div className="flex-1 relative">
+                <input
+                  type="url"
+                  value={tempCustomUrl}
+                  onChange={(e) => setTempCustomUrl(e.target.value)}
+                  placeholder="e.g., https://your-custom-backend.com"
+                  className="w-full px-4 py-2.5 rounded-xl border border-outline-variant/60 bg-surface text-on-surface font-mono text-xs focus:outline-hidden focus:border-[#48671c] transition-all"
+                />
+                {customApiBaseUrl && (
+                  <span className="absolute right-3 top-2.5 flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                  </span>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleSaveCustomUrl}
+                  className="px-5 py-2.5 bg-[#48671c] hover:bg-[#385116] text-white font-sans text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer text-center whitespace-nowrap"
+                >
+                  Save Route URL
+                </button>
+                {customApiBaseUrl && (
+                  <button
+                    type="button"
+                    onClick={handleResetCustomUrl}
+                    className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-sans text-xs font-bold rounded-xl transition-all cursor-pointer text-center"
+                  >
+                    Reset standard (/api)
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {urlMessage && (
+              <div className={`p-3 rounded-lg text-xs leading-normal font-sans animate-fadeIn ${
+                urlMessage.type === 'success' ? 'bg-green-50 text-green-850 border border-green-150' : 'bg-gray-50 text-on-surface-variant border border-outline-variant/50'
+              }`}>
+                {urlMessage.text}
+              </div>
+            )}
+
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-2 text-[11px] font-sans text-on-surface-variant border-t border-outline-variant/20">
+              <div className="flex items-center gap-1.5">
+                <span className="font-semibold text-on-surface">Active Routing Base:</span>
+                <code className="bg-gray-150/70 px-1.5 py-0.5 rounded text-primary font-mono text-[10px]">
+                  {customApiBaseUrl || "(standard local relative proxy)"}
+                </code>
+              </div>
+              <div>
+                <span className="font-semibold text-on-surface">Status:</span>{' '}
+                {customApiBaseUrl ? (
+                  <span className="text-green-705 font-bold">⚡ Custom Connection Active</span>
+                ) : (
+                  <span className="text-[#48671c] font-black">✓ Standard Netlify Proxy Redirects</span>
+                )}
+              </div>
+            </div>
+
+            <div className="p-3 bg-gray-50/60 rounded-xl border border-outline-variant/30 text-[10.5px] leading-relaxed text-on-surface-variant space-y-1.5 font-sans">
+              <div className="font-bold text-on-surface">ℹ️ Dynamic API Routing Options for Production:</div>
+              <ul className="list-disc pl-4 space-y-1 text-gray-650">
+                <li>
+                  <strong className="text-on-surface font-semibold">Option A (Standard Netlify Proxy Redirect - Recommended)</strong>:
+                  Keep the input above blank. In your GitHub repository, open the files: <code className="bg-gray-150/60 px-0.5 rounded">public/_redirects</code> and replace the default proxy address with your custom backend URL:
+                  <div className="mt-1 font-mono text-[9px] bg-white p-1.5 rounded border border-gray-200 max-w-full overflow-x-auto select-all">
+                    /api/*    https://your-custom-backend.com/api/:splat   200
+                  </div>
+                  This bypasses browser CORS locks completely and keeps your React code 100% clean.
+                </li>
+                <li>
+                  <strong className="text-on-surface font-semibold">Option B (Direct Absolute Domain Calling)</strong>:
+                  Enter your absolute backend URL above (e.g. <code className="bg-gray-150/60 px-0.5 rounded">https://api.yourdomain.com</code>) and save. All local requests will bypass Netlify's redirects and call your server directly. Ensure you enable CORS on your node server to accept requests from your Netlify domain (<code className="bg-gray-150/60 px-0.5 rounded">https://a2zecommerce.netlify.app</code>)!
+                </li>
+              </ul>
+            </div>
+          </div>
         </div>
 
         {/* Section Tabs */}

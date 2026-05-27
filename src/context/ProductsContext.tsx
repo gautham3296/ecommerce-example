@@ -6,6 +6,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Product } from '../types';
 import { products as staticProducts } from '../data/products';
+import { getApiUrl } from '../lib/api';
 
 interface ProductsContextType {
   products: Product[];
@@ -26,7 +27,7 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
   const loadProducts = async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/products");
+      const res = await fetch(getApiUrl("/api/products"));
       if (res.ok) {
         const data = await res.json();
         if (data.source === "mysql" && Array.isArray(data.products) && data.products.length > 0) {
@@ -61,7 +62,7 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
   const upsertProduct = async (product: Product): Promise<boolean> => {
     let remoteSuccess = false;
     try {
-      const res = await fetch("/api/products/upsert", {
+      const res = await fetch(getApiUrl("/api/products/upsert"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(product),
@@ -95,7 +96,7 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
   const deleteProduct = async (id: string): Promise<boolean> => {
     let remoteSuccess = false;
     try {
-      const res = await fetch("/api/products/delete", {
+      const res = await fetch(getApiUrl("/api/products/delete"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id }),
